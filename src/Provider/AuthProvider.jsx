@@ -1,3 +1,4 @@
+// AuthProvider.jsx
 import { createContext, useEffect, useState } from "react";
 import app from "../Firebase/firebase.config";
 import {
@@ -25,51 +26,58 @@ const AuthProvider = ({ children }) => {
   const [role, setRole] = useState("");
   const [userState, setUserState] = useState("");
 
-  // Create user
-  const createUser = (email, password) => {
+  // ✅ Create user with proper error handling
+  const createUser = async (email, password) => {
     setLoading(true);
-    return createUserWithEmailAndPassword(auth, email, password);
+    try {
+      return await createUserWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      setLoading(false);
+      throw error; // IMPORTANT: pass error to Register.jsx
+    }
   };
 
-  // Login
-  const signIn = (email, password) => {
+  const signIn = async (email, password) => {
     setLoading(true);
-    return signInWithEmailAndPassword(auth, email, password);
+    try {
+      return await signInWithEmailAndPassword(auth, email, password);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Google login
-  const googleLogin = () => {
+  const googleLogin = async () => {
     setLoading(true);
-    return signInWithPopup(auth, googleProvider);
+    try {
+      return await signInWithPopup(auth, googleProvider);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Update profile
   const updateUser = (profileData) => {
     return updateProfile(auth.currentUser, profileData);
   };
 
-  // Logout
-  const logout = () => {
+  const logout = async () => {
     setLoading(true);
-    return signOut(auth);
+    await signOut(auth);
+    setLoading(false);
   };
 
-  // Reset password
   const resetPassword = (email) => {
     return sendPasswordResetEmail(auth, email);
   };
 
-  // Observe auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Fetch role & status from backend
+  // Fetch role & status
   useEffect(() => {
     if (!user?.email) {
       setRole("");
@@ -79,7 +87,6 @@ const AuthProvider = ({ children }) => {
     }
 
     setRoleLoading(true);
-
     axios
       .get(`https://blood-donation-xi-one.vercel.app/users/role/${user.email}`)
       .then((res) => {
@@ -93,24 +100,24 @@ const AuthProvider = ({ children }) => {
       .finally(() => setRoleLoading(false));
   }, [user]);
 
-  const authData = {
-    user,
-    loading,
-    role,
-    roleLoading,
-    userState,
-    createUser,
-    signIn,
-    googleLogin,
-    logout,
-    updateUser,
-    resetPassword,
-    setUser,
-    setLoading,
-  };
-
   return (
-    <AuthContext.Provider value={authData}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        role,
+        roleLoading,
+        userState,
+        createUser,
+        signIn,
+        googleLogin,
+        logout,
+        updateUser,
+        resetPassword,
+        setUser,
+        setLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
